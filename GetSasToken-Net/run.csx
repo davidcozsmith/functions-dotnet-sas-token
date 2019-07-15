@@ -8,6 +8,9 @@ using System.Net;
 using System.Configuration;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions;
+using Microsoft.AspNetCore.Mvc;
 
 // Request body format: 
 // - `container` - *required*. Name of container in storage account
