@@ -33,21 +33,29 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
       return new BadRequestObjectResult("Invalid value for 'permissions'");
     }
   }
-
+  var startTime = DateTime.UtcNow.AddMinutes(-5);
+  if (data.startTime != null)
+  {
+    bool success = DateTime.TryParse(data.startTime, out startTime);
+    if (!success)
+    {
+      return new BadRequestObjectResult("Invalid value for 'startTime'");
+    }
+  }
   var storageAccount = CloudStorageAccount.Parse(data.connection.ToString());
   var blobClient = storageAccount.CreateCloudBlobClient();
   var container = blobClient.GetContainerReference(data.container.ToString());
   if (data.blobName == null)
   {
-    return new OkObjectResult(GetContainerSasToken(container, permissions));
+    return new OkObjectResult(GetContainerSasToken(container, permissions, startTime));
   }
   else
   {
-    return new OkObjectResult(GetBlobSasToken(container, data.blobName.ToString(), permissions));
+    return new OkObjectResult(GetBlobSasToken(container, data.blobName.ToString(), permissions, startTime));
   }
 }
 
-public static string GetBlobSasToken(CloudBlobContainer container, string blobName, SharedAccessBlobPermissions permissions, string policyName = null)
+public static string GetBlobSasToken(CloudBlobContainer container, string blobName, SharedAccessBlobPermissions permissions, DateTime startTime, string policyName = null)
 {
   string sasBlobToken;
 
@@ -57,7 +65,7 @@ public static string GetBlobSasToken(CloudBlobContainer container, string blobNa
 
   if (policyName == null)
   {
-    var adHocSas = CreateAdHocSasPolicy(permissions);
+    var adHocSas = CreateAdHocSasPolicy(permissions, startTime);
 
     // Generate the shared access signature on the blob, setting the constraints directly on the signature.
     sasBlobToken = blob.GetSharedAccessSignature(adHocSas);
@@ -72,14 +80,14 @@ public static string GetBlobSasToken(CloudBlobContainer container, string blobNa
   return sasBlobToken;
 }
 
-public static string GetContainerSasToken(CloudBlobContainer container, SharedAccessBlobPermissions permissions, string storedPolicyName = null)
+public static string GetContainerSasToken(CloudBlobContainer container, SharedAccessBlobPermissions permissions, DateTime startTime, string storedPolicyName = null)
 {
   string sasContainerToken;
 
   // If no stored policy is specified, create a new access policy and define its constraints.
   if (storedPolicyName == null)
   {
-    var adHocSas = CreateAdHocSasPolicy(permissions);
+    var adHocSas = CreateAdHocSasPolicy(permissions, startTime);
 
     // Generate the shared access signature on the container, setting the constraints directly on the signature.
     sasContainerToken = container.GetSharedAccessSignature(adHocSas, null);
@@ -96,7 +104,7 @@ public static string GetContainerSasToken(CloudBlobContainer container, SharedAc
   return sasContainerToken;
 }
 
-private static SharedAccessBlobPolicy CreateAdHocSasPolicy(SharedAccessBlobPermissions permissions)
+private static SharedAccessBlobPolicy CreateAdHocSasPolicy(SharedAccessBlobPermissions permissions, DateTime startTime)
 {
   // Create a new access policy and define its constraints.
   // Note that the SharedAccessBlobPolicy class is used both to define the parameters of an ad-hoc SAS, and 
@@ -105,7 +113,7 @@ private static SharedAccessBlobPolicy CreateAdHocSasPolicy(SharedAccessBlobPermi
   return new SharedAccessBlobPolicy()
   {
     // Set start time to five minutes before now to avoid clock skew.
-    SharedAccessStartTime = DateTime.UtcNow.AddMinutes(-5),
+    SharedAccessStartTime = startTime,
     SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
     Permissions = permissions
   };
