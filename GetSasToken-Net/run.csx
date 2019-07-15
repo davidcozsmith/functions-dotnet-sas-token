@@ -4,11 +4,18 @@
 
 #r "Microsoft.WindowsAzure.Storage"
 
+using System.IO;
 using System.Net;
 using System.Configuration;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.Extensions;
 
 // Request body format: 
 // - `container` - *required*. Name of container in storage account
@@ -16,16 +23,15 @@ using Microsoft.Extensions;
 // - `permissions` - *optional*. Default value is read permissions. The format matches the enum values of SharedAccessBlobPermissions. 
 //    Possible values are "Read", "Write", "Delete", "List", "Add", "Create". Comma-separate multiple permissions, such as "Read, Write, Create".
 
-public static async Task<IActionResult> Run(HttpRequestMessage req, Logging.ILogger log)
+public static async Task<IActionResult> Run(
+    [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req,
+    ILogger log)
 {
   dynamic data = await req.Content.ReadAsAsync<object>();
 
   if (data.container == null)
   {
-    return new BadRequestObjectResult(new
-    {
-      error = "Specify value for 'container'"
-    });
+    return new BadRequestObjectResult("Specify value for 'container'");
   }
 
   var permissions = SharedAccessBlobPermissions.Read; // default to read permissions
@@ -33,10 +39,7 @@ public static async Task<IActionResult> Run(HttpRequestMessage req, Logging.ILog
 
   if (!success)
   {
-    return new BadRequestObjectResult(new
-    {
-      error = "Invalid value for 'permissions'"
-    });
+    return new BadRequestObjectResult("Invalid value for 'permissions'");
   }
 
   var storageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageAccountConnection"]);
