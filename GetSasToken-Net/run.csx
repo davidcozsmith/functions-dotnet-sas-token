@@ -36,7 +36,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
   var startTime = DateTime.UtcNow.AddMinutes(-5);
   if (data.startTime != null)
   {
-    bool success = DateTime.TryParse(data.startTime, out startTime);
+    bool success = DateTime.TryParse(data.startTime.ToString(), out startTime);
     if (!success)
     {
       return new BadRequestObjectResult("Invalid value for 'startTime'");
