@@ -8,6 +8,7 @@ using System.Net;
 using System.Configuration;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Extensions;
 
 // Request body format: 
 // - `container` - *required*. Name of container in storage account
@@ -15,13 +16,13 @@ using Microsoft.WindowsAzure.Storage.Blob;
 // - `permissions` - *optional*. Default value is read permissions. The format matches the enum values of SharedAccessBlobPermissions. 
 //    Possible values are "Read", "Write", "Delete", "List", "Add", "Create". Comma-separate multiple permissions, such as "Read, Write, Create".
 
-public static async Task<IActionResult> Run(HttpRequestMessage req, TraceWriter log)
+public static async Task<IActionResult> Run(HttpRequestMessage req, Logging.ILogger log)
 {
   dynamic data = await req.Content.ReadAsAsync<object>();
 
   if (data.container == null)
   {
-    return BadRequestObjectResult(new
+    return new BadRequestObjectResult(new
     {
       error = "Specify value for 'container'"
     });
@@ -32,7 +33,7 @@ public static async Task<IActionResult> Run(HttpRequestMessage req, TraceWriter 
 
   if (!success)
   {
-    return BadRequestObjectResult(new
+    return new BadRequestObjectResult(new
     {
       error = "Invalid value for 'permissions'"
     });
@@ -47,7 +48,7 @@ public static async Task<IActionResult> Run(HttpRequestMessage req, TraceWriter 
           GetBlobSasToken(container, data.blobName.ToString(), permissions) :
           GetContainerSasToken(container, permissions);
 
-  return OkObjectResult(new
+  return new OkObjectResult(new
   {
     token = sasToken,
     uri = container.Uri + sasToken
