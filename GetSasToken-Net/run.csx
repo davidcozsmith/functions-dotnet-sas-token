@@ -12,13 +12,16 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
 {
   log.LogInformation("C# HTTP trigger function processed a request.");
 
-  // string name = req.Query["name"];
   dynamic requestBody = await new StreamReader(req.Body).ReadToEndAsync();
   dynamic data = JsonConvert.DeserializeObject(requestBody);
-  //dynamic data = await req.Content.ReadAsAsync<object>();
   if (data.container == null)
   {
     return new BadRequestObjectResult("Specify value for 'container'");
+  }
+
+  if (data.connection == null)
+  {
+    return new BadRequestObjectResult("Specify value for 'connection'");
   }
 
   var permissions = SharedAccessBlobPermissions.Read; // default to read permissions
@@ -28,13 +31,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
     return new BadRequestObjectResult("Invalid value for 'permissions'");
   }
 
-  var account = System.Environment.GetEnvironmentVariable("StorageAccountConnection", EnvironmentVariableTarget.Process);
-  if (account == null)
-  {
-    return new BadRequestObjectResult("Missing configuration 'StorageAccountConnection'");
-  }
-
-  var storageAccount = CloudStorageAccount.Parse(account);
+  var storageAccount = CloudStorageAccount.Parse(data.connection);
   var blobClient = storageAccount.CreateCloudBlobClient();
   var container = blobClient.GetContainerReference(data.container.ToString());
   if (data.blobName == null)
