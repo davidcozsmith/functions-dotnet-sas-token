@@ -43,8 +43,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
             GetBlobSasToken(container, data.blobName.ToString(), permissions) :
             GetContainerSasToken(container, permissions);
 
-    return new OkObjectResult(new
-    {
+    return req.CreateResponse(HttpStatusCode.OK, new {
         token = sasToken,
         uri = container.Uri + sasToken
     });
