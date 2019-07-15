@@ -34,7 +34,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
         });
     }
 
-    var storageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["AzureWebJobsStorage"]);
+    var storageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageAccountConnection"]);
     var blobClient = storageAccount.CreateCloudBlobClient();
     var container = blobClient.GetContainerReference(data.container.ToString());
 
