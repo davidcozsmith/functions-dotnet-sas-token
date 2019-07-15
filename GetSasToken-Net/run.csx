@@ -31,7 +31,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
     return new BadRequestObjectResult("Invalid value for 'permissions'");
   }
 
-  var storageAccount = CloudStorageAccount.Parse(data.connection);
+  var storageAccount = CloudStorageAccount.Parse(data.connection.ToString());
   var blobClient = storageAccount.CreateCloudBlobClient();
   var container = blobClient.GetContainerReference(data.container.ToString());
   if (data.blobName == null)
