@@ -25,10 +25,13 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
   }
 
   var permissions = SharedAccessBlobPermissions.Read; // default to read permissions
-  if (!String.IsNullOrWhiteSpace(data.permissions.ToString()))
+  if (data.permissions != null)
   {
     bool success = Enum.TryParse(data.permissions.ToString(), out permissions);
-    return new BadRequestObjectResult("Invalid value for 'permissions'");
+    if (!success)
+    {
+      return new BadRequestObjectResult("Invalid value for 'permissions'");
+    }
   }
 
   var storageAccount = CloudStorageAccount.Parse(data.connection.ToString());
