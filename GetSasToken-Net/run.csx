@@ -1,61 +1,50 @@
-// An HTTP trigger Azure Function that returns a SAS token for Azure Storage for the specified container. 
-// You can also optionally specify a particular blob name and access permissions. 
-// To learn more, see https://github.com/Azure-Samples/functions-dotnet-sas-token/blob/master/README.md
-
+#r "Newtonsoft.Json"
 #r "Microsoft.WindowsAzure.Storage"
 
-using System.IO;
 using System.Net;
-using System.Configuration;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-// Request body format: 
-// - `container` - *required*. Name of container in storage account
-// - `blobName` - *optional*. Used to scope permissions to a particular blob
-// - `permissions` - *optional*. Default value is read permissions. The format matches the enum values of SharedAccessBlobPermissions. 
-//    Possible values are "Read", "Write", "Delete", "List", "Add", "Create". Comma-separate multiple permissions, such as "Read, Write, Create".
-
-public static async Task<IActionResult> Run(
-    [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequest req,
-    ILogger log)
+public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
 {
-  dynamic data = await req.Content.ReadAsAsync<object>();
+  log.LogInformation("C# HTTP trigger function processed a request.");
 
+  // string name = req.Query["name"];
+  dynamic requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+  dynamic data = JsonConvert.DeserializeObject(requestBody);
+  //dynamic data = await req.Content.ReadAsAsync<object>();
   if (data.container == null)
   {
     return new BadRequestObjectResult("Specify value for 'container'");
   }
 
   var permissions = SharedAccessBlobPermissions.Read; // default to read permissions
-  bool success = Enum.TryParse(data.permissions.ToString(), out permissions);
-
-  if (!success)
+  if (!String.IsNullOrWhiteSpace(data.permissions))
   {
+    bool success = Enum.TryParse(data.permissions.ToString(), out permissions);
     return new BadRequestObjectResult("Invalid value for 'permissions'");
   }
 
-  var storageAccount = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["StorageAccountConnection"]);
+  var account = System.Environment.GetEnvironmentVariable("StorageAccountConnection", EnvironmentVariableTarget.Process);
+  if (account == null)
+  {
+    return new BadRequestObjectResult("Missing configuration 'StorageAccountConnection'");
+  }
+
+  var storageAccount = CloudStorageAccount.Parse(account);
   var blobClient = storageAccount.CreateCloudBlobClient();
   var container = blobClient.GetContainerReference(data.container.ToString());
-
-  var sasToken =
-      data.blobName != null ?
-          GetBlobSasToken(container, data.blobName.ToString(), permissions) :
-          GetContainerSasToken(container, permissions);
-
-  return new OkObjectResult(new
+  if (data.blobName == null)
   {
-    token = sasToken,
-    uri = container.Uri + sasToken
-  });
+    return new OkObjectResult(GetContainerSasToken(container, permissions));
+  }
+  else
+  {
+    return new OkObjectResult(GetBlobSasToken(container, data.blobName.ToString(), permissions));
+  }
 }
 
 public static string GetBlobSasToken(CloudBlobContainer container, string blobName, SharedAccessBlobPermissions permissions, string policyName = null)
