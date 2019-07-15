@@ -25,7 +25,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
   }
 
   var permissions = SharedAccessBlobPermissions.Read; // default to read permissions
-  if (!String.IsNullOrWhiteSpace(data.permissions))
+  if (!String.IsNullOrWhiteSpace(data.permissions.ToString()))
   {
     bool success = Enum.TryParse(data.permissions.ToString(), out permissions);
     return new BadRequestObjectResult("Invalid value for 'permissions'");
